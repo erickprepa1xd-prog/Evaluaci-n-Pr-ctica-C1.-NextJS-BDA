@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:15
+    container_name: coffee_db
+    restart: always
+    environment:
+      POSTGRES_DB: cafeteria_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5432:5432"
+    volumes:
+      # Estos scripts se ejecutan automáticamente en orden alfabético al iniciar el contenedor [cite: 44]
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql
+      - ./db/reports_vw.sql:/docker-entrypoint-initdb.d/3-reports.sql
+      - ./db/indexes.sql:/docker-entrypoint-initdb.d/4-indexes.sql
+      - ./db/roles.sql:/docker-entrypoint-initdb.d/5-roles.sql
+
+  web:
+    build: .
+    container_name: nextjs_app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      # Aquí cumplimos con la seguridad: la app usa el rol 'app', no el administrador [cite: 62, 63, 70]
+      DATABASE_URL: postgresql://app:password_app@db:5432/cafeteria_db
